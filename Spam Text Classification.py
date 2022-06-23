@@ -1,15 +1,5 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
-# This Python 3 environment comes with many helpful analytics libraries installed
-# It is defined by the kaggle/python Docker image: https://github.com/kaggle/docker-python
-# For example, here's several helpful packages to load
-
-import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+import numpy as np
+import pandas as pd
 import string as st
 import re
 import unicodedata
@@ -17,43 +7,14 @@ import nltk
 from nltk import PorterStemmer, WordNetLemmatizer
 import matplotlib.pyplot as plt
 
-# Input data files are available in the read-only "../input/" directory
-# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
-
 import os
 for dirname, _, filenames in os.walk('/kaggle/input'):
     for filename in filenames:
         print(os.path.join(dirname, filename))
 
-# You can write up to 5GB to the current directory (/kaggle/working/) that gets preserved as output when you create a version using "Save & Run All" 
-# You can also write temporary files to /kaggle/temp/, but they won't be saved outside of the current session
 
-
-# In[2]:
-
-
-# Read the data. Here it is already in .csv format.
 data = pd.read_csv('spam.csv')
 data.head()
-
-
-# In[3]:
-
-
-data.shape
-
-Text cleaning and processing steps
-    •	expand_contractions
-    •   remove_accented_chars
-    •	Remove punctuations
-    •	Convert text to tokens
-    •	Remove tokens of length less than or equal to 3
-    •	Remove stopwords using NLTK corpus stopwords list to match
-    •	Apply stemming
-    •	Apply lemmatization
-    •	Convert words to feature vectors
-# In[5]:
-
 
 contractions_dict = {
     'didn\'t': 'did not',
@@ -154,154 +115,94 @@ contractions_dict = {
 
 contractions_re = re.compile('(%s)' % '|'.join(contractions_dict.keys()))
 
-
-# In[6]:
-
-
 def expand_contractions(text, contractions_dict=contractions_dict):
     def replace(match):
         return contractions_dict[match.group(0)]
     return contractions_re.sub(replace, text)
 
-
-# In[7]:
-
-
 data['expanded_contractions'] = data['Message'].apply(lambda x: expand_contractions(x))
 data.head()
 
-
-# In[8]:
 
 
 def remove_accented_chars(text):
     text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8', 'ignore')
     return text
 
-
-# In[9]:
-
-
 data['removed_accented_chars'] = data['expanded_contractions'].apply(lambda x: remove_accented_chars(x))
 data.head()
 
 
-# In[10]:
-
-
 # Remove all punctuations from the text
-
 def remove_punct(text):
     return ("".join([ch for ch in text if ch not in st.punctuation]))
-
-
-# In[11]:
-
 
 data['removed_punc'] = data['removed_accented_chars'].apply(lambda x: remove_punct(x))
 data.head()
 
 
-# In[12]:
-
 
 ''' Convert text to lower case tokens. Here, split() is applied on white-spaces. But, it could be applied
-    on special characters, tabs or any other string based on which text is to be seperated into tokens.
-'''
+    on special characters, tabs or any other string based on which text is to be seperated into tokens.'''
+
 def tokenize(text):
     text = re.split('\s+' ,text)
     return [x.lower() for x in text]
 
-
-# In[13]:
-
-
 data['tokens'] = data['removed_punc'].apply(lambda msg : tokenize(msg))
 data.head()
 
-
-# In[14]:
 
 
 # Remove tokens of length less than 3
 def remove_small_words(text):
     return [x for x in text if len(x) > 3 ]
 
-
-# In[15]:
-
-
 data['larger_tokens'] = data['tokens'].apply(lambda x : remove_small_words(x))
 data.head()
 
 
-# In[16]:
-
 
 ''' Remove stopwords. Here, NLTK corpus list is used for a match. However, a customized user-defined 
-    list could be created and used to limit the matches in input text. 
-'''
+    list could be created and used to limit the matches in input text. '''
+
 def remove_stopwords(text):
     return [word for word in text if word not in nltk.corpus.stopwords.words('english')]
-
-
-# In[17]:
-
 
 data['clean_tokens'] = data['larger_tokens'].apply(lambda x : remove_stopwords(x))
 data.head()
 
-Apply stemming to convert tokens to their root form. This is a rule-based process of word form conversion where word-suffixes are truncated irrespective of whether the root word is an actual word in the language dictionary.
-Note that this step is optional and depends on problem type.
-# In[19]:
 
+'''Apply stemming to convert tokens to their root form. This is a rule-based process of word form conversion where word-suffixes are truncated irrespective of whether the root word is an actual word in the language dictionary.
+Note that this step is optional and depends on problem type.'''
 
 # Apply stemming to get root words 
 def stemming(text):
     ps = PorterStemmer()
     return [ps.stem(word) for word in text]
 
-
-# In[20]:
-
-
 data['stem_words'] = data['clean_tokens'].apply(lambda wrd: stemming(wrd))
 data.head()
 
-Lemmatization converts word to it's dictionary base form. This process takes language grammar and vocabulary into consideration while conversion. Hence, it is different from Stemming in that it does not merely truncate the suffixes to get the root word.
-# In[21]:
 
+'''Lemmatization converts word to it's dictionary base form. This process takes language grammar and vocabulary into consideration while conversion.
+Hence, it is different from Stemming in that it does not merely truncate the suffixes to get the root word.'''
 
 # Apply lemmatization on tokens
 def lemmatize(text):
     word_net = WordNetLemmatizer()
     return [word_net.lemmatize(word) for word in text]
 
-
-# In[22]:
-
-
 data['lemma_words'] = data['clean_tokens'].apply(lambda x : lemmatize(x))
 data.head()
 
 
-# In[23]:
-
-
 # Create sentences to get clean text as input for vectors
-
 def return_sentences(tokens):
     return " ".join([word for word in tokens])
 
-
-# In[24]:
-
-
 data['clean_text'] = data['lemma_words'].apply(lambda x : return_sentences(x))
 data.head()
-
-
-# In[25]:
 
 
 # Generate a basic word cloud 
@@ -311,6 +212,7 @@ text = " ".join([x for x in data['clean_text']])
 # Create and generate a word cloud image:
 wordcloud = WordCloud(max_font_size=30, max_words=1000).generate(text)
 
+
 # Display the generated image:
 plt.figure(figsize= [20,10])
 plt.imshow(wordcloud)
@@ -318,16 +220,9 @@ plt.axis("off")
 plt.show()
 
 
-# In[26]:
-
-
 # Prepare data for the model. Convert label/category in to binary
-
 data['Category'] = [1 if x == 'spam' else 0 for x in data['Category']]
 data.head()
-
-
-# In[27]:
 
 
 # Split data in to training, testing sets
@@ -338,15 +233,13 @@ text_train, text_test, y_train, y_test = train_test_split(data['clean_text'], da
 print(text_train.shape)
 print(text_test.shape)
 
-TF-IDF : Term Frequency - Inverse Document Frequency
+'''TF-IDF : Term Frequency - Inverse Document Frequency
 The term frequency is the number of times a term occurs in a document. Inverse document frequency is an inverse function of the number of documents in which that a given word occurs.
 The product of these two terms gives tf-idf weight for a word in the corpus. The higher the frequency of occurrence of a word, lower is it's weight and vice-versa. This gives more weightage to rare terms in the corpus and penalizes more commonly occuring terms.
-Other widely used vectorizer is Count vectorizer which only considers the frequency of occurrence of a word across the corpus.
-# In[28]:
+Other widely used vectorizer is Count vectorizer which only considers the frequency of occurrence of a word across the corpus.'''
 
 
 # Convert lemmatized words to Tf-Idf feature vectors
-
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 tfidf = TfidfVectorizer()
@@ -358,20 +251,12 @@ print(X_test.toarray())
 print(X_test.shape)
 
 
-# In[29]:
-
-
 # Get a few feature names in the vector
 tfidf.get_feature_names()[-5::]
 
 
-# In[30]:
-
-
 # 1st Model - Logistic Regression
-
 from sklearn.linear_model import LogisticRegression
-
 lr = LogisticRegression(max_iter = 500)
 lr.fit(X_train, y_train)
 print('Logistic Regression model fitted..')
@@ -381,13 +266,8 @@ print("Accuracy score : {}".format(accuracy_score(y_test, pred)))
 print("Confusion matrix : \n {}".format(confusion_matrix(y_test, pred)))
 
 
-# In[31]:
-
-
 # 2nd Model - Random Forest Classifier
-
 from sklearn.ensemble import RandomForestClassifier
-
 rf = RandomForestClassifier()
 rf.fit(X_train, y_train)
 
@@ -397,14 +277,10 @@ print("Accuracy score : {}".format(accuracy_score(y_test, pred)))
 print("Confusion matrix : \n {}".format(confusion_matrix(y_test, pred)))
 
 
-# In[32]:
-
 
 # 3rd model - eXtreme Gradient Boosting
-
 import xgboost
 from xgboost import XGBClassifier
-
 xgb = XGBClassifier()
 xgb.fit(X_train, y_train)
 
@@ -414,12 +290,9 @@ print("Accuracy score : {}".format(accuracy_score(y_test, pred)))
 print("Confusion matrix : \n {}".format(confusion_matrix(y_test, pred)))
 
 
-# In[33]:
-
 
 import lightgbm
 from lightgbm import LGBMClassifier
-
 lgbm = LGBMClassifier()
 lgbm.fit(X_train, y_train)
 
@@ -427,28 +300,4 @@ print('LightGBM Classifier model fitted..')
 pred = lgbm.predict(X_test)
 print("Accuracy score : {}".format(accuracy_score(y_test, pred)))
 print("Confusion matrix : \n {}".format(confusion_matrix(y_test, pred)))
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
 
